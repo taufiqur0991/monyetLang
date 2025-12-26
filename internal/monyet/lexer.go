@@ -45,8 +45,22 @@ func (l *Lexer) NextToken() Token {
 	case '*':
 		return Token{Type: STAR, Value: "*"}
 	case '/':
+		if l.peek() == '/' {
+			// Ini komentar, abaikan sampai akhir baris
+			for {
+				ch := l.next()
+				if ch == '\n' || ch == 0 {
+					break
+				}
+			}
+			return l.NextToken() // Panggil lagi untuk cari token asli berikutnya
+		}
 		return Token{Type: SLASH, Value: "/"}
 	case '=':
+		if l.peek() == '=' {
+			l.next() // makan = kedua
+			return Token{Type: EQ, Value: "=="}
+		}
 		return Token{Type: ASSIGN, Value: "="}
 	case ';':
 		return Token{Type: SEMICOLON, Value: ";"}
@@ -66,13 +80,18 @@ func (l *Lexer) NextToken() Token {
 		return Token{Type: RBRACE, Value: "}"}
 	case ',':
 		return Token{Type: COMMA, Value: ","}
+	case '[':
+		return Token{Type: LBRACKET, Value: "["}
+	case ']':
+		return Token{Type: RBRACKET, Value: "]"}
+
 	}
 
 	if unicode.IsDigit(ch) {
 		return Token{Type: NUMBER, Value: l.readNumber(ch)}
 	}
 
-	if unicode.IsLetter(ch) {
+	if unicode.IsLetter(ch) || ch == '_' {
 		ident := l.readIdent(ch)
 		if ident == "echo" {
 			return Token{Type: ECHO, Value: ident}
@@ -108,11 +127,15 @@ func (l *Lexer) readNumber(start rune) string {
 }
 
 func (l *Lexer) readIdent(start rune) string {
-
 	out := []rune{start}
-
-	for unicode.IsLetter(l.peek()) {
-		out = append(out, l.next())
+	for {
+		ch := l.peek()
+		// Izinkan huruf, angka, dan underscore
+		if unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' {
+			out = append(out, l.next())
+		} else {
+			break
+		}
 	}
 	return string(out)
 }

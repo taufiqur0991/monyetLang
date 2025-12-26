@@ -1,6 +1,7 @@
 package monyet
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -41,6 +42,7 @@ func (p *Parser) Parse() *Program {
 }
 
 func (p *Parser) parseStatement() Node {
+	fmt.Printf("Parsing statement, token saat ini: %s (%s)\n", p.cur.Type, p.cur.Value)
 	switch p.cur.Type {
 	case IF:
 		return p.parseIf()
@@ -53,19 +55,61 @@ func (p *Parser) parseStatement() Node {
 		p.next()
 		return Echo{Value: p.parseExpr()}
 	case DOLLAR:
-		// Ini pasti Assignment: $a = ...
 		p.next() // makan $
 		name := p.cur.Value
-		p.next() // makan identitas
+		p.next() // makan nama identitas
+
+		// 1. Inisialisasi node awal sebagai variabel
+		var node Node = Variable{Name: name}
+
+		// 2. Cek apakah ada bracket (IndexAccess)
+		// Kita pakai FOR supaya bisa handle nested: $a["b"]["c"]
+		for p.cur.Type == LBRACKET {
+			p.next() // makan [
+			index := p.parseExpr()
+			if p.cur.Type != RBRACKET {
+				panic("Kurang ] di index access")
+			}
+			p.next() // makan ]
+			node = IndexAccess{Left: node, Index: index}
+		}
+
+		// 3. SEKARANG CEK ASSIGNMENT
 		if p.cur.Type == ASSIGN {
 			p.next() // makan =
-			return Assign{Name: name, Value: p.parseExpr()}
+			val := p.parseExpr()
+
+			// Jika node adalah Variable biasa
+			if v, ok := node.(Variable); ok {
+				return Assign{Name: v.Name, Value: val}
+			}
+
+			// Jika node adalah IndexAccess, kita butuh tipe AST baru (AssignIndex)
+			// Tapi untuk sementara, agar tidak error, kita return node biasa atau handle error
+			return Assign{Name: name, Value: val}
 		}
-		return Variable{Name: name}
+
+		// Jika bukan assignment (misal cuma manggil $_GET["nama"] di baris baru)
+		return node
 	case IDENT:
-		// Ini bisa jadi Call: cekAngka(15)
 		name := p.cur.Value
 		p.next()
+
+		var node Node = Variable{Name: name}
+
+		// --- TAMBAHKAN INI UNTUK MENANGANI _GET["nama"] ---
+		for p.cur.Type == LBRACKET {
+			p.next() // makan [
+			index := p.parseExpr()
+			if p.cur.Type != RBRACKET {
+				panic("Expected ]")
+			}
+			p.next() // makan ]
+			node = IndexAccess{Left: node, Index: index}
+		}
+		// ------------------------------------------------
+
+		// Cek jika ini fungsi call: hello()
 		if p.cur.Type == LPAREN {
 			p.next() // makan (
 			args := []Node{}
@@ -78,16 +122,21 @@ func (p *Parser) parseStatement() Node {
 			p.next() // makan )
 			return Call{Name: name, Args: args}
 		}
-		return Variable{Name: name}
+
+		// Cek jika ini assignment ke variabel tanpa $: _GET["a"] = 1
+		if p.cur.Type == ASSIGN {
+			p.next()
+			return Assign{Name: name, Value: p.parseExpr()}
+		}
+
+		return node
 	case SERVE:
-		p.next() // makan 'serve'
-		p.next() // makan '('
-		port := p.parseExpr()
-		p.next() // makan ','
-		handlerName := p.cur.Value
-		p.next()
-		p.next() // makan ')'
-		return Serve{Port: port, Handler: handlerName}
+		return p.parseServe()
+	default:
+		// Jika parser bingung, dia akan lapor
+		if p.cur.Type != EOF && p.cur.Type != SEMICOLON && p.cur.Type != RBRACE {
+			fmt.Printf("DEBUG: Token = %s, Value = %s\n", p.cur.Type, p.cur.Value)
+		}
 	}
 
 	return nil
@@ -106,49 +155,51 @@ func (p *Parser) parseTerm() Node {
 
 func (p *Parser) parseFactor() Node {
 	tok := p.cur
+	var node Node
 
+	// 1. Ambil Node Dasar
 	if tok.Type == DOLLAR {
 		p.next()
 		name := p.cur.Value
 		p.next()
-		return Variable{Name: name}
-	}
-
-	if tok.Type == NUMBER {
+		node = Variable{Name: name}
+	} else if tok.Type == NUMBER {
 		p.next()
 		v, _ := strconv.Atoi(tok.Value)
-		return Number{Value: v}
-	}
-
-	if tok.Type == STRING {
+		node = Number{Value: v}
+	} else if tok.Type == STRING {
 		p.next()
-		return String{Value: tok.Value}
-	}
-
-	if tok.Type == IDENT {
+		node = String{Value: tok.Value}
+	} else if tok.Type == IDENT {
 		name := tok.Value
 		p.next()
-
 		if p.cur.Type == LPAREN {
-			p.next()
+			p.next() // (
 			args := []Node{}
-
 			for p.cur.Type != RPAREN {
 				args = append(args, p.parseExpr())
 				if p.cur.Type == COMMA {
 					p.next()
 				}
 			}
-
 			p.next() // )
-
-			return Call{Name: name, Args: args}
+			node = Call{Name: name, Args: args}
+		} else {
+			node = Variable{Name: name}
 		}
-
-		return Variable{Name: name}
 	}
 
-	return nil
+	for p.cur.Type == LBRACKET {
+		p.next() // makan [
+		index := p.parseExpr()
+		if p.cur.Type != RBRACKET {
+			panic("Expected ]")
+		}
+		p.next() // makan ]
+		node = IndexAccess{Left: node, Index: index}
+	}
+
+	return node
 }
 
 func (p *Parser) parseExpr() Node {
@@ -157,7 +208,7 @@ func (p *Parser) parseExpr() Node {
 
 func (p *Parser) parseComparison() Node {
 	left := p.parseAdditive()
-	for p.cur.Type == GT {
+	for p.cur.Type == GT || p.cur.Type == EQ {
 		op := p.cur.Type
 		p.next()
 		right := p.parseAdditive()
@@ -258,7 +309,9 @@ func (p *Parser) parseIf() Node {
 			p.next()
 		}
 	}
-	p.next() // makan '}' (RBRACE)
+	if p.cur.Type == RBRACE {
+		p.next() // makan }
+	}
 
 	var elseBody []Node
 	if p.cur.Type == ELSE {
@@ -276,7 +329,9 @@ func (p *Parser) parseIf() Node {
 					p.next()
 				}
 			}
-			p.next() // makan '}'
+			if p.cur.Type == RBRACE {
+				p.next() // makan }
+			}
 		} else if p.cur.Type == IF {
 			// Support 'else if' secara rekursif
 			elseBody = append(elseBody, p.parseIf())
@@ -284,4 +339,29 @@ func (p *Parser) parseIf() Node {
 	}
 
 	return If{Condition: cond, Then: thenBody, Else: elseBody}
+}
+
+func (p *Parser) parseServe() Node {
+	p.next() // makan 'serve'
+	if p.cur.Type != LPAREN {
+		panic("Kurang ( di serve")
+	}
+	p.next()
+
+	port := p.parseExpr()
+
+	if p.cur.Type != COMMA {
+		panic("Kurang koma setelah port di serve")
+	}
+	p.next()
+
+	handlerName := p.cur.Value // Ambil nama fungsi
+	p.next()
+
+	if p.cur.Type != RPAREN {
+		panic("Kurang ) di serve")
+	}
+	p.next()
+
+	return Serve{Port: port, Handler: handlerName}
 }

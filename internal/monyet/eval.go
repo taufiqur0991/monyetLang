@@ -3,6 +3,7 @@ package monyet
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 func Eval(prog *Program, env *Env) {
@@ -27,6 +28,10 @@ func evalNode(n Node, env *Env) interface{} {
 	case Variable:
 		val, ok := env.GetVar(v.Name)
 		if !ok {
+			// Jika variabel diawali GET_, jangan panic, kembalikan string kosong
+			if strings.HasPrefix(v.Name, "GET_") {
+				return ""
+			}
 			panic("undefined variable: $" + v.Name)
 		}
 		return val
@@ -40,8 +45,19 @@ func evalNode(n Node, env *Env) interface{} {
 		left := evalNode(v.Left, env)
 		right := evalNode(v.Right, env)
 
-		// STRING CONCAT (PHP-style)
-		if v.Op == PLUS {
+		// 1. Operasi Perbandingan (Bisa String atau Int)
+		switch v.Op {
+		case EQ:
+			sLeft, okL := left.(string)
+			sRight, okR := right.(string)
+
+			if okL && okR {
+				// Bersihkan spasi/newline di kedua sisi
+				return strings.TrimSpace(sLeft) == strings.TrimSpace(sRight)
+			}
+			return left == right
+		case PLUS:
+			// Cek kalau salah satu string, lakukan Concat (PHP-style)
 			_, lok := left.(string)
 			_, rok := right.(string)
 			if lok || rok {
@@ -49,11 +65,12 @@ func evalNode(n Node, env *Env) interface{} {
 			}
 		}
 
-		// INTEGER OPS
+		// 2. Operasi Matematika & Perbandingan Angka (Khusus Int)
 		li, lok := left.(int)
 		ri, rok := right.(int)
 		if !lok || !rok {
-			panic("invalid operands for binary operation")
+			// Biar tidak bingung, kasih info lebih detail di panic
+			panic(fmt.Sprintf("invalid operands for binary operation: %v (%T) and %v (%T)", left, left, right, right))
 		}
 
 		switch v.Op {
@@ -104,8 +121,6 @@ func evalNode(n Node, env *Env) interface{} {
 		return returnValue{value: val}
 	case If:
 		cond := evalNode(v.Condition, env)
-
-		// Pastikan hasil Binary GT (>) adalah boolean
 		isTrue := false
 		if b, ok := cond.(bool); ok {
 			isTrue = b
@@ -115,43 +130,56 @@ func evalNode(n Node, env *Env) interface{} {
 
 		if isTrue {
 			for _, stmt := range v.Then {
-				evalNode(stmt, env) // Jalankan setiap statement di dalam { }
+				res := evalNode(stmt, env)
+				// TAMBAHKAN INI: Jika ada return di dalam IF, teruskan ke atas
+				if rv, ok := res.(returnValue); ok {
+					return rv
+				}
 			}
 		} else if v.Else != nil {
 			for _, stmt := range v.Else {
-				evalNode(stmt, env) // Jalankan blok else jika ada
+				res := evalNode(stmt, env)
+				// TAMBAHKAN INI: Jika ada return di dalam ELSE, teruskan ke atas
+				if rv, ok := res.(returnValue); ok {
+					return rv
+				}
 			}
+		}
+		return nil
+	case IndexAccess:
+		left := evalNode(v.Left, env)
+		index := evalNode(v.Index, env)
+
+		// Cek apakah left adalah sebuah Map (untuk $_GET)
+		if m, ok := left.(map[string]interface{}); ok {
+			idxStr := fmt.Sprintf("%v", index)
+			return m[idxStr]
 		}
 		return nil
 	case Serve:
 		portVal := evalNode(v.Port, env)
 		handlerName := v.Handler
+		addr := fmt.Sprintf("0.0.0.0:%v", portVal)
 
-		var addr string
-		// Cek apakah inputnya string (seperti "0.0.0.0:80") atau int (seperti 8080)
-		switch p := portVal.(type) {
-		case string:
-			addr = p
-		case int:
-			addr = fmt.Sprintf("0.0.0.0:%d", p)
-		default:
-			panic("serve() expects port to be an integer or a string like '0.0.0.0:8080'")
-		}
-
-		fmt.Println("Monyet server aktif di " + addr)
-
-		// Handler tetap sama
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			fn, ok := env.GetFunc(handlerName)
 			if !ok {
-				fmt.Fprintf(w, "Error: Function %s not found", handlerName)
 				return
+			}
+			monyetGet := make(map[string]interface{})
+			for key, values := range r.URL.Query() {
+				monyetGet[key] = values[0]
 			}
 
 			local := NewChildEnv(env)
-			// Kita bisa tambahkan info request ke env local agar bisa diakses di dalam script
-			local.SetVar("METHOD", r.Method)
+			local.SetVar("_GET", monyetGet)
 			local.SetVar("PATH", r.URL.Path)
+			local.SetVar("METHOD", r.Method)
+
+			// Memasukkan semua query params secara otomatis
+			for key, values := range r.URL.Query() {
+				local.SetVar("GET_"+strings.ToUpper(key), values[0])
+			}
 
 			var result interface{}
 			for _, stmt := range fn.Body {
@@ -161,13 +189,13 @@ func evalNode(n Node, env *Env) interface{} {
 					break
 				}
 			}
-
-			if result != nil {
-				fmt.Fprintf(w, "%v", result)
-			}
+			fmt.Fprintf(w, "%v", result)
 		})
-
-		return http.ListenAndServe(addr, nil)
+		err := http.ListenAndServe(addr, nil)
+		if err != nil {
+			fmt.Printf("Web Server Gagal: %v\n", err) // Tambahkan log ini
+		}
+		return nil
 	}
 
 	return nil

@@ -58,3 +58,8 @@ type Serve struct {
 	Port    Node
 	Handler string
 }
+
+type IndexAccess struct {
+	Left  Node
+	Index Node
+}

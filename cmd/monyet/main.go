@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"monyet/internal/monyet"
@@ -14,5 +15,6 @@ func main() {
 	prog := parser.Parse()
 
 	env := monyet.NewEnv()
+	fmt.Printf("DEBUG: Berhasil parse %d statement\n", len(prog.Statements))
 	monyet.Eval(prog, env)
 }

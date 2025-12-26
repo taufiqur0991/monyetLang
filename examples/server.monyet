@@ -1,9 +1,39 @@
-$port = 8080;
+function hello() {
+    // Kita ambil dari query ?nama=...
+    $namaUser = $_GET["nama"];
+    
+    // Beri nilai default jika query kosong
+    if ($namaUser == "") {
+        $namaUser = "Tamu";
+    }
 
-function home() {
-    echo "Ada orang buka web kita!";
-    return "<h1>Selamat Datang!</h1><p>Ini hasil render dari MonyetLang.</p>";
+    return "<h1>Halo, " + $namaUser + "!</h1><p>Senang bertemu kamu di MonyetLang.</p>";
 }
 
-echo "Starting server...";
-serve("0.0.0.0:8080", home);
+function home(){
+    return "<h1>Homepage</h1>";
+}
+
+function router() {
+
+
+    if ($PATH == "/") {
+        return home();
+    }
+    if ($PATH == "/halo") {
+        if ($METHOD == "GET") {
+            return hello();
+        }
+        if ($METHOD == "POST") {
+            return "Kamu mencoba POST ke halo!";
+        }
+    }
+
+    if ($PATH == "/data" && $METHOD == "DELETE") {
+        return "Data dihapus!";
+    }
+    
+    return "Halaman 404";
+}
+
+serve(8080, router);

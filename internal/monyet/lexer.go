@@ -30,6 +30,7 @@ func (l *Lexer) peek() rune {
 func (l *Lexer) NextToken() Token {
 	ch := l.next()
 
+	// skip whitespace
 	for unicode.IsSpace(ch) {
 		ch = l.next()
 	}
@@ -59,7 +60,12 @@ func (l *Lexer) NextToken() Token {
 		return Token{Type: STRING, Value: l.readString()}
 	case '>':
 		return Token{Type: GT, Value: ">"}
-
+	case '{':
+		return Token{Type: LBRACE, Value: "{"}
+	case '}':
+		return Token{Type: RBRACE, Value: "}"}
+	case ',':
+		return Token{Type: COMMA, Value: ","}
 	}
 
 	if unicode.IsDigit(ch) {
@@ -71,10 +77,23 @@ func (l *Lexer) NextToken() Token {
 		if ident == "echo" {
 			return Token{Type: ECHO, Value: ident}
 		}
+		if ident == "fn" || ident == "function" {
+			return Token{Type: FUNCTION, Value: ident}
+		}
+		if ident == "return" {
+			return Token{Type: RETURN, Value: ident}
+		}
+		if ident == "if" {
+			return Token{Type: IF, Value: ident}
+		}
+		if ident == "else" {
+			return Token{Type: ELSE, Value: ident}
+		}
+
 		return Token{Type: IDENT, Value: ident}
 	}
 
-	return Token{Type: ILLEGAL}
+	return Token{Type: ILLEGAL, Value: string(ch)}
 }
 
 func (l *Lexer) readNumber(start rune) string {
@@ -86,7 +105,9 @@ func (l *Lexer) readNumber(start rune) string {
 }
 
 func (l *Lexer) readIdent(start rune) string {
+
 	out := []rune{start}
+
 	for unicode.IsLetter(l.peek()) {
 		out = append(out, l.next())
 	}

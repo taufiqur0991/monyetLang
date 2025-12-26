@@ -8,6 +8,10 @@ func Eval(prog *Program, env *Env) {
 	}
 }
 
+type returnValue struct {
+	value interface{}
+}
+
 func evalNode(n Node, env *Env) interface{} {
 	switch v := n.(type) {
 
@@ -18,7 +22,7 @@ func evalNode(n Node, env *Env) interface{} {
 		return v.Value
 
 	case Variable:
-		val, ok := env.vars[v.Name]
+		val, ok := env.GetVar(v.Name)
 		if !ok {
 			panic("undefined variable: $" + v.Name)
 		}
@@ -26,7 +30,7 @@ func evalNode(n Node, env *Env) interface{} {
 
 	case Assign:
 		val := evalNode(v.Value, env)
-		env.vars[v.Name] = val
+		env.SetVar(v.Name, val)
 		return val
 
 	case Binary:
@@ -65,6 +69,56 @@ func evalNode(n Node, env *Env) interface{} {
 	case Echo:
 		val := evalNode(v.Value, env)
 		fmt.Println(val)
+		return nil
+
+	case Function:
+		env.SetFunc(v.Name, v)
+		return nil
+
+	case Call:
+		fn, ok := env.GetFunc(v.Name)
+		if !ok {
+			panic("undefined function: " + v.Name)
+		}
+		//fmt.Println("Memanggil fungsi:", v.Name, "dengan args:", v.Args)
+
+		local := NewChildEnv(env)
+
+		for i, p := range fn.Params {
+			local.SetVar(p, evalNode(v.Args[i], env))
+		}
+
+		for _, stmt := range fn.Body {
+			val := evalNode(stmt, local)
+			if rv, ok := val.(returnValue); ok {
+				return rv.value
+			}
+		}
+		return nil
+
+	case Return:
+		val := evalNode(v.Value, env)
+		return returnValue{value: val}
+	case If:
+		cond := evalNode(v.Condition, env)
+
+		// Pastikan hasil Binary GT (>) adalah boolean
+		isTrue := false
+		if b, ok := cond.(bool); ok {
+			isTrue = b
+		} else if i, ok := cond.(int); ok {
+			isTrue = i > 0
+		}
+
+		if isTrue {
+			for _, stmt := range v.Then {
+				evalNode(stmt, env) // Jalankan setiap statement di dalam { }
+			}
+		} else if v.Else != nil {
+			for _, stmt := range v.Else {
+				evalNode(stmt, env) // Jalankan blok else jika ada
+			}
+		}
 		return nil
 	}
 

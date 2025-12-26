@@ -10,3 +10,21 @@ $a = 10;
 if ($a > 5) {
 	echo "besar";
 }
+
+function add(a, b) {
+    return a + b;
+}
+
+echo add(14, 5);
+
+
+function cekAngka(n) {
+    if ($n > 10) {
+        echo "Angka besar";
+    } else {
+        echo "Angka kecil";
+    }
+}
+
+cekAngka(15);
+cekAngka(8);

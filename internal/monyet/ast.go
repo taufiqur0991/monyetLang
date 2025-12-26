@@ -32,3 +32,24 @@ type Echo struct {
 type String struct {
 	Value string
 }
+
+type Function struct {
+	Name   string
+	Params []string
+	Body   []Node
+}
+
+type Call struct {
+	Name string
+	Args []Node
+}
+
+type Return struct {
+	Value Node
+}
+
+type If struct {
+	Condition Node
+	Then      []Node
+	Else      []Node // Bisa nil kalau tidak ada else
+}

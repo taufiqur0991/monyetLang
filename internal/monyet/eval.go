@@ -386,6 +386,46 @@ func evalNode(n Node, env *Env) interface{} {
 			res[keyStr] = valEval
 		}
 		return res
+	case ForeachStatement:
+		iter := evalNode(v.Iterable, env)
+
+		// Cek jika iterabel adalah Slice/Array
+		if list, ok := iter.([]interface{}); ok {
+			for i, item := range list {
+				local := NewChildEnv(env)
+				if v.Key != "" {
+					local.SetVar(v.Key, float64(i)) // index sebagai angka
+				}
+				local.SetVar(v.Value, item)
+
+				for _, stmt := range v.Body {
+					res := evalNode(stmt, local)
+					if rv, ok := res.(returnValue); ok {
+						return rv
+					}
+				}
+			}
+			return nil
+		}
+
+		// Cek jika iterabel adalah Map
+		if m, ok := iter.(map[string]interface{}); ok {
+			for k, val := range m {
+				local := NewChildEnv(env)
+				if v.Key != "" {
+					local.SetVar(v.Key, k)
+				}
+				local.SetVar(v.Value, val)
+
+				for _, stmt := range v.Body {
+					res := evalNode(stmt, local)
+					if rv, ok := res.(returnValue); ok {
+						return rv
+					}
+				}
+			}
+			return nil
+		}
 		//end of switch
 	}
 

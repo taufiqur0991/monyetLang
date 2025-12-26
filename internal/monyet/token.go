@@ -42,6 +42,8 @@ const (
 	JSON_ENCODE = "JSON_ENCODE"
 	JSON_DECODE = "JSON_DECODE"
 	ARROW       = "=>"
+	FOREACH     = "FOREACH"
+	AS          = "AS"
 )
 
 type Token struct {

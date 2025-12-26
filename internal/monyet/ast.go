@@ -83,5 +83,13 @@ type JsonDecode struct {
 type MapLiteral struct {
 	Pairs map[Node]Node
 }
+type ForeachStatement struct {
+	Iterable Node
+	Key      string
+	Value    string
+	Body     []Node
+}
+
+//func (f ForeachStatement) nodeSigil() {}
 
 // func (m MapLiteral) nodeSig() {}

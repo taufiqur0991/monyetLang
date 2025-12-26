@@ -137,6 +137,12 @@ func (l *Lexer) NextToken() Token {
 		if ident == "json_decode" {
 			return Token{Type: JSON_DECODE, Value: ident}
 		}
+		if ident == "foreach" {
+			return Token{Type: FOREACH, Value: ident}
+		}
+		if ident == "as" {
+			return Token{Type: AS, Value: ident}
+		}
 
 		return Token{Type: IDENT, Value: ident}
 	}

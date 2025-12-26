@@ -71,3 +71,14 @@ echo "Data dari DB - Skor: " + $profil_db["skor"];
 // Hapus Data (Opsional)
 // delete_data("user_01");
 // drop_db(); // Hapus file project_test.db secara fisik
+
+$data = ["apel", "pisang", "jeruk"];
+
+foreach ($data as $k => $v) {
+    echo "Index: " + $k + " Buah: " + $v;
+}
+
+// Atau tanpa key
+foreach ($data as $buah) {
+    echo "Makan " + $buah;
+}

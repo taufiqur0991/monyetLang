@@ -2,7 +2,6 @@ package monyet
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -121,21 +120,4 @@ func (db *MonyetDB) Drop() error {
 	db.file.Close()                   // Tutup koneksi file
 	db.index = make(map[string]int64) // Kosongkan index di RAM
 	return os.Remove(db.path)         // Hapus file dari folder
-}
-
-func (db *MonyetDB) SetJSON(key string, value interface{}) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	// 1. Baca seluruh file JSON yang ada ke dalam Map Go
-	data := make(map[string]interface{})
-	content, _ := os.ReadFile(db.path)
-	json.Unmarshal(content, &data)
-
-	// 2. Tambah/Update data baru
-	data[key] = value
-
-	// 3. Tulis ulang seluruh file sebagai JSON yang rapi
-	newContent, _ := json.MarshalIndent(data, "", "  ")
-	os.WriteFile(db.path, newContent, 0644)
 }

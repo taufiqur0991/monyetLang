@@ -146,6 +146,8 @@ func (p *Parser) parseStatement() Node {
 			p.next()
 		}
 		return Include{Path: path}
+	case FOREACH:
+		return p.parseForeach()
 	default:
 		// Jika sampai sini, berarti ada token yang Parser tidak tahu cara handle-nya
 		fmt.Printf("WARNING: Parser tidak tahu cara menangani token %s\n", p.cur.Type)
@@ -170,21 +172,22 @@ func (p *Parser) parseFactor() Node {
 	tok := p.cur
 	var node Node
 
-	if tok.Type == DOLLAR {
+	switch tok.Type {
+	case DOLLAR:
 		p.next() // makan $
 		name := p.cur.Value
 		p.next() // makan nama
 		node = Variable{Name: name}
-	} else if tok.Type == NUMBER {
+	case NUMBER:
 		p.next()
 		val, _ := strconv.ParseFloat(tok.Value, 64)
 		node = Number{Value: val}
-	} else if tok.Type == STRING {
+	case STRING:
 		p.next()
 		node = String{Value: tok.Value}
-	} else if tok.Type == LBRACKET {
+	case LBRACKET:
 		node = p.parseMapLiteral()
-	} else if tok.Type == IDENT {
+	case IDENT:
 		name := tok.Value
 		p.next()
 		if p.cur.Type == LPAREN {
@@ -201,13 +204,13 @@ func (p *Parser) parseFactor() Node {
 		} else {
 			node = Variable{Name: name}
 		}
-	} else if tok.Type == RENDER {
+	case RENDER:
 		p.next() // render
 		p.next() // (
 		path := p.parseExpr()
 		p.next() // )
 		node = Render{Path: path}
-	} else if tok.Type == JSON_ENCODE {
+	case JSON_ENCODE:
 		p.next() // json_encode
 		if p.cur.Type == LPAREN {
 			p.next()
@@ -217,7 +220,7 @@ func (p *Parser) parseFactor() Node {
 			p.next()
 		}
 		node = JsonEncode{Data: data}
-	} else if tok.Type == JSON_DECODE {
+	case JSON_DECODE:
 		p.next() // json_decode
 		if p.cur.Type == LPAREN {
 			p.next()
@@ -358,7 +361,8 @@ func (p *Parser) parseIf() Node {
 		p.next() // makan 'else'
 
 		// Cek apakah ada '{' (untuk else) atau langsung 'if' (untuk else if)
-		if p.cur.Type == LBRACE {
+		switch p.cur.Type {
+		case LBRACE:
 			p.next() // makan '{'
 			for p.cur.Type != RBRACE && p.cur.Type != EOF {
 				stmt := p.parseStatement()
@@ -372,7 +376,7 @@ func (p *Parser) parseIf() Node {
 			if p.cur.Type == RBRACE {
 				p.next() // makan }
 			}
-		} else if p.cur.Type == IF {
+		case IF:
 			// Support 'else if' secara rekursif
 			elseBody = append(elseBody, p.parseIf())
 		}
@@ -454,4 +458,70 @@ func (p *Parser) parseMapLiteral() Node {
 	p.next() // makan ]
 
 	return MapLiteral{Pairs: pairs}
+}
+
+func (p *Parser) parseForeach() Node {
+	p.next() // makan 'foreach'
+	if p.cur.Type != LPAREN {
+		panic("Expected ( after foreach")
+	}
+	p.next()
+
+	iterable := p.parseExpr()
+
+	if p.cur.Type != AS {
+		panic("Expected 'as' in foreach")
+	}
+	p.next()
+
+	// Handle key => value atau cuma value
+	var keyName, valName string
+
+	if p.cur.Type == DOLLAR {
+		p.next()
+	}
+	firstIdent := p.cur.Value
+	p.next()
+
+	if p.cur.Type == ARROW { // Jika ada =>
+		p.next() // makan =>
+		keyName = firstIdent
+		if p.cur.Type == DOLLAR {
+			p.next()
+		}
+		valName = p.cur.Value
+		p.next()
+	} else {
+		keyName = "" // tidak ada key
+		valName = firstIdent
+	}
+
+	if p.cur.Type != RPAREN {
+		panic("Expected ) after foreach header")
+	}
+	p.next()
+
+	if p.cur.Type != LBRACE {
+		panic("Expected { before foreach body")
+	}
+	p.next()
+
+	body := []Node{}
+	for p.cur.Type != RBRACE && p.cur.Type != EOF {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			body = append(body, stmt)
+		}
+		if p.cur.Type == SEMICOLON {
+			p.next()
+		}
+	}
+	p.next() // makan }
+
+	return ForeachStatement{
+		Iterable: iterable,
+		Key:      keyName,
+		Value:    valName,
+		Body:     body,
+	}
 }

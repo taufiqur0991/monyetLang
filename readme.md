@@ -1,43 +1,43 @@
 # 🐵 MonyetLang & MonyetDB
 **Lightweight Scripting Engine with Native Web Server & Log-Structured Database.**
 
-MonyetLang adalah bahasa pemrograman interpretatif yang dibuat murni menggunakan Go. Proyek ini dirancang untuk skenario **Edge Computing** atau hardware dengan resource terbatas, di mana kamu butuh web server dan penyimpanan data yang cepat tanpa overhead yang besar.
+MonyetLang is an interpreted programming language built entirely from scratch using Go. This project is specifically designed for **Edge Computing** scenarios and resource-constrained hardware, where you need a fast web server and data storage without heavy overhead.
 
-## 🌟 Fitur Unggulan
+## 🌟 Key Features
 
 ### 1. MonyetDB (Custom Storage Engine)
-Berbeda dengan database tradisional, MonyetDB menggunakan arsitektur **Log-Structured Storage**:
-* **Append-Only Logging**: Menjamin integritas data. Tidak ada data yang ditimpa, semua perubahan dicatat sebagai log baru.
-* **In-Memory Hash Indexing**: Memetakan setiap *key* ke *byte offset* di disk. Pencarian data bersifat O(1) karena sistem langsung melakukan `Seek` ke posisi data tanpa scanning file.
-* **Crash Resilience**: Karena sistemnya *append-only*, data lama tetap aman meskipun terjadi kegagalan sistem saat penulisan.
+Unlike traditional databases, MonyetDB utilizes a **Log-Structured Storage** architecture:
+* **Append-Only Logging**: Ensures data integrity. Existing data is never overwritten; all changes are recorded as new log entries.
+* **In-Memory Hash Indexing**: Maps every *key* to its *byte offset* on the disk. Data retrieval is $O(1)$ because the system performs a direct `Seek` to the data position without scanning the entire file.
+* **Crash Resilience**: Thanks to its *append-only* nature, historical data remains safe even if a system failure occurs during a write operation.
 
 ### 2. Built-in Web Server
-MonyetLang memiliki server HTTP internal yang mendukung:
-* **RESTful Routing**: Menangani `$PATH` dan `$METHOD` (GET, POST, PATCH, DELETE).
-* **Superglobal Variables**: Akses mudah ke data request melalui `$_GET`, `$_POST`, `$_PATCH`, dan `$_DELETE`.
-* **JSON Native**: Integrasi langsung dengan `json_encode` dan `json_decode`.
+MonyetLang features an internal HTTP server that supports:
+* **RESTful Routing**: Effortlessly handle `$PATH` and `$METHOD` (GET, POST, PATCH, DELETE).
+* **Superglobal Variables**: Easy access to request data via `$_GET`, `$_POST`, `$_PATCH`, and `$_DELETE`.
+* **Native JSON Support**: Built-in integration for `json_encode` and `json_decode`.
 
-## 🛠️ Instalasi & Penggunaan
+## 🛠️ Installation & Usage
 
-### Build Runner
-Kompilasi source code Go menjadi file binary:
+### Build the Runner
+Compile the Go source code into a binary file:
 ```bash
 go build -o monyet.exe ./cmd/monyet
 ```
 
-### Menjalankan Script
-Gunakan runner untuk mengeksekusi file .nyet:
+### Run a Script
+Use the runner to execute a .nyet file:
 ```bash
 ./monyet.exe examples/test.nyet
 ```
 
-### Menjalankan Web Server
-Server akan berjalan di port 8080 (default) dan siap melayani request API serta database:
+### Start the Web Server
+The server will run on port 8080 (default) and is ready to serve API requests and database operations:
 ```bash
 ./monyet.exe examples/server.nyet
 ```
 
-### 📝 Contoh Script (server.nyet)
+### 📝 Script Example (server.nyet)
 ```PHP
 function router() {
     // 1. Endpoint Homepage
@@ -45,7 +45,7 @@ function router() {
         return "<h1>Welcome to MonyetLang Server</h1>";
     }
 
-    // 2. Endpoint API dengan Database
+    // 2. API Endpoint with Database Integration
     if ($PATH == "/api/data") {
         if ($METHOD == "POST") {
             $val = $_POST["nama"];
@@ -65,10 +65,10 @@ function router() {
 serve(8080, router);
 ```
 
-### 🏗️ Struktur Proyek
-- `/cmd/monyet`: Entry point aplikasi.
+### 🏗️ Project Structure
+- `/cmd/monyet`: Application entry point.
 - `/internal/monyet`: Core engine (Lexer, Parser, Interpreter, DB).
-- `examples/`: Koleksi script contoh penggunaan.
+- `examples/`: Collection of example scripts.
 
 ### 📷 Screenshoot
 ![Screenshoot](screenshoot.png)

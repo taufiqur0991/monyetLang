@@ -70,5 +70,10 @@ serve(8080, router);
 - `/internal/monyet`: Core engine (Lexer, Parser, Interpreter, DB).
 - `examples/`: Collection of example scripts.
 
+### Database Functions
+* `set_data(key, value)` - Store or update a value.
+* `get_data(key)` - Retrieve a value (O(1) via Index).
+* `delete_data(key)` - Mark a key as deleted (Tombstone mechanism).
+* `drop_db()` - Permanently delete the database file and reset.
 ### 📷 Screenshoot
 ![Screenshoot](screenshoot.png)

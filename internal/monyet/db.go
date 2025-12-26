@@ -75,10 +75,8 @@ func (db *MonyetDB) Get(key string) string {
 		return ""
 	}
 
-	// Langsung lompat ke posisi byte yang dicatat
 	f, _ := os.Open(db.path)
 	defer f.Close()
-
 	f.Seek(offset, 0)
 
 	scanner := bufio.NewScanner(f)
@@ -86,10 +84,43 @@ func (db *MonyetDB) Get(key string) string {
 		line := scanner.Text()
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) == 2 {
+			// JIKA nilainya __DELETED__, kembalikan string kosong
+			if parts[1] == "__DELETED__" {
+				return ""
+			}
 			return parts[1]
 		}
 	}
 	return ""
+}
+
+// Tambahkan fungsi ini di db.go
+func (db *MonyetDB) Delete(key string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// Tulis baris baru yang menandakan key ini sudah dihapus
+	line := fmt.Sprintf("%s:__DELETED__\n", key)
+
+	info, _ := db.file.Stat()
+	offset := info.Size()
+
+	_, err := db.file.WriteString(line)
+	if err == nil {
+		// Update index di RAM: pindahkan offset ke baris DELETED ini
+		db.index[key] = offset
+		db.file.Sync()
+	}
+	return err
+}
+
+func (db *MonyetDB) Drop() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	db.file.Close()                   // Tutup koneksi file
+	db.index = make(map[string]int64) // Kosongkan index di RAM
+	return os.Remove(db.path)         // Hapus file dari folder
 }
 
 func (db *MonyetDB) SetJSON(key string, value interface{}) {

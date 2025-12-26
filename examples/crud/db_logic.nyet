@@ -1,0 +1,22 @@
+// db_logic.nyet
+$DB_NAME = "crud_data.db";
+
+function create_user($nama, $umur) {
+
+    $data = ["nama" => $nama, "umur" => $umur];
+    $json = json_encode($data);
+    
+    set_data("user_" + $nama, $json);
+    return "User " + $nama + " created!";
+}
+
+function read_user($nama) {
+    $raw = get_data("user_" + $nama);
+    if ($raw == "") { return "User not found"; }
+    return $raw;
+}
+
+function delete_user($nama) {
+    delete_data("user_" + $nama);
+    return "User " + $nama + " deleted!";
+}

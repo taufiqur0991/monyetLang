@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-var storage = NewMonyetDB("monyet.db")
+var activeStorage *MonyetDB
+var activeDBPath string
 
 func Eval(prog *Program, env *Env) {
 	for _, s := range prog.Statements {
@@ -49,8 +50,6 @@ func evalNode(n Node, env *Env) interface{} {
 		return val
 
 	case Binary:
-		// 1. Tangani Logika (AND / OR) terlebih dahulu
-		// Karena ini butuh return bool, kita evaluasi langsung
 		if v.Op == AND || v.Op == OR {
 			lVal, okL := evalNode(v.Left, env).(bool)
 			rVal, okR := evalNode(v.Right, env).(bool)
@@ -87,8 +86,8 @@ func evalNode(n Node, env *Env) interface{} {
 		}
 
 		// 4. Operasi Matematika & Perbandingan Angka (Khusus Int)
-		li, lok := left.(int)
-		ri, rok := right.(int)
+		li, lok := left.(float64)
+		ri, rok := right.(float64)
 		if !lok || !rok {
 			panic(fmt.Sprintf("invalid operands for binary operation: %v (%T) and %v (%T)", left, left, right, right))
 		}
@@ -119,6 +118,24 @@ func evalNode(n Node, env *Env) interface{} {
 		return nil
 
 	case Call:
+		getStorage := func() *MonyetDB {
+			base, _ := env.GetVar("__BASE_DIR__")
+			dbPath := filepath.Join(base.(string), "monyet.db")
+
+			if customName, ok := env.GetVar("DB_NAME"); ok {
+				dbPath = filepath.Join(base.(string), fmt.Sprintf("%v", customName))
+			}
+
+			// Jika path-nya masih sama dan storage sudah ada, pakai yang lama saja
+			if activeStorage != nil && activeDBPath == dbPath {
+				return activeStorage
+			}
+
+			// Jika ganti nama DB atau baru pertama kali, buka koneksi baru
+			activeDBPath = dbPath
+			activeStorage = NewMonyetDB(dbPath)
+			return activeStorage
+		}
 		if v.Name == "set_data" {
 			k := fmt.Sprintf("%v", evalNode(v.Args[0], env))
 			val := evalNode(v.Args[1], env)
@@ -133,7 +150,7 @@ func evalNode(n Node, env *Env) interface{} {
 				finalVal = val
 			}
 
-			storage.Set(k, finalVal)
+			getStorage().Set(k, finalVal)
 			return true
 		}
 
@@ -144,7 +161,27 @@ func evalNode(n Node, env *Env) interface{} {
 			}
 
 			kStr := fmt.Sprintf("%v", kEval)
-			return storage.Get(kStr)
+			return getStorage().Get(kStr)
+		}
+		if v.Name == "delete_data" {
+			if len(v.Args) < 1 {
+				return false
+			}
+			k := fmt.Sprintf("%v", evalNode(v.Args[0], env))
+			if k != "" && k != "<nil>" {
+				getStorage().Delete(k)
+				return true
+			}
+			return false
+		}
+		if v.Name == "drop_db" {
+			// Memanggil fungsi Drop() untuk menghapus file fisik database
+			err := getStorage().Drop()
+			if err != nil {
+				fmt.Printf("Gagal menghapus database: %v\n", err)
+				return false
+			}
+			return true
 		}
 		fn, ok := env.GetFunc(v.Name)
 		if !ok {

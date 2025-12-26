@@ -1,0 +1,5 @@
+// main.nyet
+include "routes.nyet";
+
+echo "MonyetLang Server starting on port 8080...";
+serve(8080, api_router);

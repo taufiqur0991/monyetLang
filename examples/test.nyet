@@ -1,51 +1,73 @@
+// --- 1. VARIABEL & OPERASI MATEMATIKA ---
 $a = 20;
 $b = $a * 2 + 5;
+echo "Hasil matematika (20 * 2 + 5): " + $b;
 
-echo $b;
-
+// --- 2. MANIPULASI STRING ---
 $name = "monyet";
-echo "hello " + $name;
+echo "Pesan selamat datang: Hello " + $name;
 
+// --- 3. LOGIKA PERCABANGAN (IF-ELSE) ---
 $a = 10;
 if ($a > 5) {
-	echo "besar";
+    echo "Status angka $a: Besar";
 }
 
+// --- 4. FUNGSI USER-DEFINED ---
 function add(a, b) {
     return a + b;
 }
-
-echo add(14, 5);
-
+echo "Hasil fungsi add(14, 5): " + add(14, 5);
+$hasil = 0.5 + 0.5;
+echo $hasil;
 
 function cekAngka(n) {
+    echo "Pengecekan angka " + $n + ":";
     if ($n > 10) {
-        echo "Angka besar";
+        echo " -> Angka besar";
     } else {
-        echo "Angka kecil";
+        echo " -> Angka kecil";
     }
 }
-
 cekAngka(15);
 cekAngka(8);
-include "include.nyet";
+
+// --- 5. MODULARITAS (INCLUDE) ---
+// Pastikan file "include.nyet" ada di folder yang sama
+include "include.nyet"; 
 $total = hitungPajak(10000);
 echo "Total harga setelah pajak: " + $total;
 
-    $user = [
-        "nama" => "Budi",
-        "umur" => 25,
-        "is_admin" => 1 == 1
-    ];
-$result = json_encode($user);
-echo $result;
-echo json_decode($result);
-$user = ["nama" => "Budi", "skor" => 100];
-// Simpan map/array sebagai string JSON
-set_data("profil_1", json_encode($user)); 
+// --- 6. MANIPULASI DATA JSON ---
+$user_data = [
+    "nama"     => "Budi",
+    "umur"     => 25,
+    "is_admin" => 1 == 1
+];
 
-// Saat ambil, jangan lupa di-decode
-$dataString = get_data("profil_1");
-$profil = json_decode($dataString);
+$encoded = json_encode($user_data);
+echo "Hasil JSON Encode: " + $encoded;
 
-echo $profil["nama"];
+$decoded = json_decode($encoded);
+echo "Hasil JSON Decode (Nama): " + $decoded["nama"];
+
+// --- 7. DATABASE OPERATIONS ---
+$DB_NAME = "project_test.db"; // Menentukan nama file database kustom
+echo "Menggunakan database: " + $DB_NAME;
+
+$profil_baru = ["nama" => "Budiman", "skor" => 100];
+
+// Simpan ke Database
+set_data("user_01", json_encode($profil_baru)); 
+echo "Data user_01 berhasil disimpan.";
+
+// Ambil dari Database
+$raw_data = get_data("user_01");
+$profil_db = json_decode($raw_data);
+
+echo "Data dari DB - Nama: " + $profil_db["nama"];
+echo "Data dari DB - Skor: " + $profil_db["skor"];
+
+// Hapus Data (Opsional)
+// delete_data("user_01");
+// drop_db(); // Hapus file project_test.db secara fisik

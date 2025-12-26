@@ -7,7 +7,7 @@ type Program struct {
 }
 
 type Number struct {
-	Value int
+	Value float64
 }
 
 type Variable struct {
@@ -84,4 +84,4 @@ type MapLiteral struct {
 	Pairs map[Node]Node
 }
 
-func (m MapLiteral) nodeSig() {}
+// func (m MapLiteral) nodeSig() {}

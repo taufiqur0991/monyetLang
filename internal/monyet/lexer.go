@@ -146,8 +146,22 @@ func (l *Lexer) NextToken() Token {
 
 func (l *Lexer) readNumber(start rune) string {
 	out := []rune{start}
-	for unicode.IsDigit(l.peek()) {
-		out = append(out, l.next())
+	hasDecimal := false
+
+	for {
+		nextChar := l.peek()
+
+		// Jika karakter adalah angka
+		if unicode.IsDigit(nextChar) {
+			out = append(out, l.next())
+		} else if nextChar == '.' && !hasDecimal {
+			// Jika ketemu titik dan belum pernah ada titik sebelumnya
+			hasDecimal = true
+			out = append(out, l.next())
+		} else {
+			// Berhenti jika ketemu karakter lain (spasi, koma, huruf, dll)
+			break
+		}
 	}
 	return string(out)
 }

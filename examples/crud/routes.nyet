@@ -1,0 +1,21 @@
+// routes.nyet
+include "db_logic.nyet";
+
+function api_router() {
+    // CREATE POST
+    if ($PATH == "/user" && $METHOD == "POST") {
+        return create_user($_POST["nama"], $_POST["umur"]);
+    }
+
+    // READ GET 
+    if ($PATH == "/user" && $METHOD == "GET") {
+        return read_user($_GET["nama"]);
+    }
+
+    // DELETE DELETE
+    if ($PATH == "/user" && $METHOD == "DELETE") {
+        return delete_user($_DELETE["nama"]);
+    }
+
+    return "Route not found";
+}

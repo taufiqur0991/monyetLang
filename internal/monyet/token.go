@@ -49,9 +49,9 @@ type Token struct {
 	Value string
 }
 
-var keywords = map[string]TokenType{
-	"echo":     ECHO,
-	"function": FUNCTION,
-	"return":   RETURN,
-	"include":  INCLUDE,
-}
+// var keywords = map[string]TokenType{
+// 	"echo":     ECHO,
+// 	"function": FUNCTION,
+// 	"return":   RETURN,
+// 	"include":  INCLUDE,
+// }

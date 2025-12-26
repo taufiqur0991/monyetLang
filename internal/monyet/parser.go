@@ -177,8 +177,8 @@ func (p *Parser) parseFactor() Node {
 		node = Variable{Name: name}
 	} else if tok.Type == NUMBER {
 		p.next()
-		v, _ := strconv.Atoi(tok.Value)
-		node = Number{Value: v}
+		val, _ := strconv.ParseFloat(tok.Value, 64)
+		node = Number{Value: val}
 	} else if tok.Type == STRING {
 		p.next()
 		node = String{Value: tok.Value}
@@ -438,7 +438,7 @@ func (p *Parser) parseMapLiteral() Node {
 			pairs[key] = value
 		} else {
 			// Jika tidak ada =>, gunakan index angka (seperti array)
-			pairs[Number{Value: len(pairs)}] = key
+			pairs[Number{Value: float64(len(pairs))}] = key
 		}
 
 		if p.cur.Type == COMMA {

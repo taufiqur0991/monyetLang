@@ -1,114 +1,116 @@
-function hello() {
-    // Kita ambil dari query ?nama=...
+// --- CONFIGURATION ---
+$DB_NAME = "web_app.db";
+
+// --- HANDLER: HALAMAN STATIS & UI ---
+
+function handleIndex() {
+    // Merender file HTML dari folder project
+    return render("index.html");
+}
+
+function handleHello() {
     $namaUser = $_GET["nama"];
-    
-    // Beri nilai default jika query kosong
     if ($namaUser == "") {
         $namaUser = "Tamu";
     }
-
     return "<h1>Halo, " + $namaUser + "!</h1><p>Senang bertemu kamu di MonyetLang.</p>";
 }
 
-function simpanNama() {
+// --- HANDLER: DATA BIASA (PLAIN TEXT) ---
+
+function handleSaveNama() {
     $nama = $_POST["nama"];
+    if ($nama == "") { return "Nama tidak boleh kosong!"; }
+    
     set_data("user_terakhir", $nama);
-    return "Data nama disimpan!";
+    return "Data nama [" + $nama + "] berhasil disimpan!";
 }
 
-function ambilNama() {
+function handleGetNama() {
     $nama = get_data("user_terakhir");
+    if ($nama == "") { return "Belum ada data user."; }
     return "User terakhir adalah: " + $nama;
 }
 
-function simpanInfo() {
-    $info = $_POST["info"];
-    set_data("info", $info);
-    return "Data info disimpan!";
+// --- HANDLER: DATA JSON & API ---
+
+function handleDataJson() {
+    // Ambil string mentah dari DB dan kembalikan (otomatis terdeteksi JSON oleh server)
+    $dataString = get_data("profil_data_json");
+    if ($dataString == "") {
+        return json_encode(["error" => "Data tidak ditemukan"]);
+    }
+    return $dataString;
 }
 
-function ambilInfo() {
-    $info = get_data("info");
-    return "data info : " + $info;
+function handleSaveJson() {
+    $user = [
+        "nama" => "Budi", 
+        "skor" => 100,
+        "last_update" => "2024"
+    ];
+    
+    // Simpan object map langsung (otomatis di-marshal oleh eval.go)
+    set_data("profil_data_json", $user); 
+    
+    return json_encode([
+        "status" => "saved", 
+        "data"   => $user
+    ]);
 }
 
-function handleUpdate() {
-    // Mengambil dari JSON Body {"nama": "Monyet Baru"}
-    $namaBaru = $_PATCH["nama"]; 
+function handleUpdatePatch() {
+    $namaBaru = $_PATCH["nama"];
     
     if ($namaBaru == "") {
-        return "Nama tidak boleh kosong";
+        return json_encode(["status" => "error", "message" => "Nama kosong"]);
     }
 
     return json_encode([
-        "status" => "updated",
+        "status"   => "updated",
         "new_name" => $namaBaru
     ]);
 }
 
-function data_json(){
-    $dataString = get_data("profil_data_json");
-    return $dataString;
-}
-function save_data_json(){
-    $user = ["nama" => "Budi", "skor" => 100];
-    set_data("profil_data_json", json_encode($user)); 
-    return json_encode(["status" => "saved", "data" => $user]);
-}
+// --- ROUTER UTAMA ---
 
 function router() {
+    // 1. Route Halaman Utama & UI
+    if ($PATH == "/")      { return handleIndex(); }
+    if ($PATH == "/halo")  { return handleHello(); }
 
+    // 2. Route Data Nama (Simple)
+    if ($PATH == "/save")     { return handleSaveNama(); }
+    if ($PATH == "/get-data") { return handleGetNama(); }
 
-    if ($PATH == "/") {
-        // Panggil file HTML-mu di sini
-        return render("index.html");
+    // 3. Route JSON API
+    if ($PATH == "/data-json") {
+        if ($METHOD == "GET")  { return handleDataJson(); }
+        if ($METHOD == "POST") { return handleSaveJson(); }
     }
-    if ($PATH == "/save") {
-        return simpanNama();
-    }
-    if ($PATH == "/get-data") {
-        return ambilNama();
-    }
-    if ($PATH == "/save-info") {
-        return simpanInfo();
-    }
-    if ($PATH == "/get-info") {
-        return ambilInfo();
-    }
-    if($PATH == "/data-json"){
-        if ($METHOD == "GET") {
-            return data_json();
-        }
-        if ($METHOD == "POST") {
-            return save_data_json();
-        }
-        
-    }
+
     if ($PATH == "/update" && $METHOD == "PATCH") {
-        return handleUpdate();
+        return handleUpdatePatch();
     }
-    $user = [
-        "nama" => "Budi",
-        "umur" => 25,
-        "is_admin" => 1 == 1
-    ];
+
+    // 4. Route System & Testing
     if ($PATH == "/api/test") {
-        return json_encode($user);
-    }
-    if ($PATH == "/halo") {
-        if ($METHOD == "GET") {
-            return hello();
-        }
-        if ($METHOD == "POST") {
-            return "Kamu mencoba POST ke halo!";
-        }
+        return json_encode([
+            "app"     => "MonyetLang Server",
+            "version" => 1.2,
+            "status"  => "Running"
+        ]);
     }
 
     if ($PATH == "/data" && $METHOD == "DELETE") {
-        return "Data dihapus!";
+        // drop_db(); // Hati-hati dengan ini!
+        return "Endpoint DELETE terpanggil!";
     }
-    
-    return "Halaman 404";
+
+    // 5. Catch-all 
+    return "<h1>404</h1><p>Halaman tidak ditemukan.</p>";
 }
 
+// --- START SERVER ---
+echo "MonyetLang Server berjalan di http://localhost:8080";
 serve(8080, router);

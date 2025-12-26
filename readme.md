@@ -71,4 +71,4 @@ serve(8080, router);
 - `examples/`: Koleksi script contoh penggunaan.
 
 ### 📷 Screenshoot
-![Screenshoot][screenshoot.png]
+![Screenshoot](screenshoot.png)

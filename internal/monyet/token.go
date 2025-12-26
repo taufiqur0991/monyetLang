@@ -35,6 +35,8 @@ const (
 	FUNCTION = "FUNCTION"
 	RETURN   = "RETURN"
 	SERVE    = "SERVE"
+	AND      = "&&"
+	OR       = "||"
 )
 
 type Token struct {

@@ -84,6 +84,16 @@ func (l *Lexer) NextToken() Token {
 		return Token{Type: LBRACKET, Value: "["}
 	case ']':
 		return Token{Type: RBRACKET, Value: "]"}
+	case '&':
+		if l.peek() == '&' {
+			l.next()
+			return Token{Type: AND, Value: "&&"}
+		}
+	case '|':
+		if l.peek() == '|' {
+			l.next()
+			return Token{Type: OR, Value: "||"}
+		}
 
 	}
 

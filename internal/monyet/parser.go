@@ -203,7 +203,7 @@ func (p *Parser) parseFactor() Node {
 }
 
 func (p *Parser) parseExpr() Node {
-	return p.parseComparison()
+	return p.parseLogical()
 }
 
 func (p *Parser) parseComparison() Node {
@@ -364,4 +364,16 @@ func (p *Parser) parseServe() Node {
 	p.next()
 
 	return Serve{Port: port, Handler: handlerName}
+}
+
+func (p *Parser) parseLogical() Node {
+	left := p.parseComparison() // Logical membungkus comparison
+
+	for p.cur.Type == AND || p.cur.Type == OR {
+		op := p.cur.Type
+		p.next()
+		right := p.parseComparison()
+		left = Binary{Left: left, Op: op, Right: right}
+	}
+	return left
 }

@@ -47,6 +47,14 @@ func evalNode(n Node, env *Env) interface{} {
 
 		// 1. Operasi Perbandingan (Bisa String atau Int)
 		switch v.Op {
+		case AND:
+			left := evalNode(v.Left, env).(bool)
+			right := evalNode(v.Right, env).(bool)
+			return left && right
+		case OR:
+			left := evalNode(v.Left, env).(bool)
+			right := evalNode(v.Right, env).(bool)
+			return left || right
 		case EQ:
 			sLeft, okL := left.(string)
 			sRight, okR := right.(string)

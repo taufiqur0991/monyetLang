@@ -3,6 +3,8 @@ package monyet
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -204,6 +206,46 @@ func evalNode(n Node, env *Env) interface{} {
 			fmt.Printf("Web Server Gagal: %v\n", err) // Tambahkan log ini
 		}
 		return nil
+	case Include:
+		// Ambil base directory dari environment
+		baseDirVal, _ := env.GetVar("__BASE_DIR__")
+		baseDir := baseDirVal.(string)
+
+		// Gabungkan: BaseDir Script + Path di dalam script
+		targetPath := filepath.Join(baseDir, v.Path)
+
+		content, err := os.ReadFile(targetPath)
+		if err != nil {
+			panic(fmt.Sprintf("Gagal include: %s", targetPath))
+		}
+
+		// PENTING: Jika file yang di-include berada di subfolder,
+		// kita harus update __BASE_DIR__ untuk file tersebut agar include di dalamnya juga jalan.
+		// Tapi untuk tahap awal, ini sudah cukup.
+
+		l := NewLexer(string(content))
+		p := NewParser(l)
+		newProg := p.Parse()
+
+		for _, stmt := range newProg.Statements {
+			evalNode(stmt, env)
+		}
+		return nil
+
+	case Render:
+		pathVal := evalNode(v.Path, env).(string)
+
+		baseDirVal, _ := env.GetVar("__BASE_DIR__")
+		baseDir := baseDirVal.(string)
+
+		targetPath := filepath.Join(baseDir, pathVal)
+
+		content, err := os.ReadFile(targetPath)
+		if err != nil {
+			return fmt.Sprintf("Render Error: File %s tidak ditemukan", targetPath)
+		}
+		return string(content)
+		//end of switch
 	}
 
 	return nil

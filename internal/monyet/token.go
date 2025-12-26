@@ -3,6 +3,8 @@ package monyet
 type TokenType string
 
 const (
+	RENDER  = "RENDER"
+	INCLUDE = "INCLUDE"
 	ILLEGAL = "ILLEGAL"
 	EOF     = "EOF"
 
@@ -48,4 +50,5 @@ var keywords = map[string]TokenType{
 	"echo":     ECHO,
 	"function": FUNCTION,
 	"return":   RETURN,
+	"include":  INCLUDE,
 }

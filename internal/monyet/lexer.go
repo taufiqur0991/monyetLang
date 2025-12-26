@@ -121,6 +121,12 @@ func (l *Lexer) NextToken() Token {
 		if ident == "serve" {
 			return Token{Type: SERVE, Value: ident}
 		}
+		if ident == "include" {
+			return Token{Type: INCLUDE, Value: ident}
+		}
+		if ident == "render" {
+			return Token{Type: RENDER, Value: ident}
+		}
 
 		return Token{Type: IDENT, Value: ident}
 	}

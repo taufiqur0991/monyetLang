@@ -129,9 +129,32 @@ func (p *Parser) parseStatement() Node {
 			return Assign{Name: name, Value: p.parseExpr()}
 		}
 
+		// Logika khusus untuk render("file.html")
+		if name == "render" && p.cur.Type == LBRACKET || p.cur.Type == LPAREN {
+			p.next() // makan (
+			pathExpr := p.parseExpr()
+			if p.cur.Type == RPAREN {
+				p.next() // makan )
+			}
+			return Render{Path: pathExpr}
+		}
+
 		return node
 	case SERVE:
 		return p.parseServe()
+	case INCLUDE:
+		p.next() // makan 'include'
+		// Pastikan token berikutnya adalah STRING (path filenya)
+		if p.cur.Type != STRING {
+			panic("Setelah include harus ada nama file (string)")
+		}
+		path := p.cur.Value // Ambil string path filenya
+		p.next()            // makan string
+		// Tambahkan pengecekan semicolon opsional
+		if p.cur.Type == SEMICOLON {
+			p.next()
+		}
+		return Include{Path: path}
 	default:
 		// Jika parser bingung, dia akan lapor
 		if p.cur.Type != EOF && p.cur.Type != SEMICOLON && p.cur.Type != RBRACE {
@@ -187,8 +210,19 @@ func (p *Parser) parseFactor() Node {
 		} else {
 			node = Variable{Name: name}
 		}
+	} else if tok.Type == RENDER { // <--- PINDAHKAN KE SINI
+		p.next() // makan 'render'
+		if p.cur.Type != LPAREN {
+			panic("Expected ( after render")
+		}
+		p.next()
+		pathExpr := p.parseExpr()
+		if p.cur.Type != RPAREN {
+			panic("Expected ) after path")
+		}
+		p.next()
+		node = Render{Path: pathExpr} // Simpan ke variable node
 	}
-
 	for p.cur.Type == LBRACKET {
 		p.next() // makan [
 		index := p.parseExpr()

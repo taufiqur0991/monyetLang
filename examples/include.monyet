@@ -1,0 +1,3 @@
+function hitungPajak($harga) {
+    return $harga * 110 / 100;
+}

@@ -63,3 +63,11 @@ type IndexAccess struct {
 	Left  Node
 	Index Node
 }
+
+type Include struct {
+	Path string
+}
+
+type Render struct {
+	Path Node
+}

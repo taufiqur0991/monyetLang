@@ -18,7 +18,8 @@ function router() {
 
 
     if ($PATH == "/") {
-        return home();
+        // Panggil file HTML-mu di sini
+        return render("index.html");
     }
     if ($PATH == "/halo") {
         if ($METHOD == "GET") {

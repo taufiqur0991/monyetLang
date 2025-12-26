@@ -28,3 +28,6 @@ function cekAngka(n) {
 
 cekAngka(15);
 cekAngka(8);
+include "include.monyet";
+$total = hitungPajak(10000);
+echo "Total harga setelah pajak: " + $total;

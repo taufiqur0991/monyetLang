@@ -41,7 +41,7 @@ func (p *Parser) Parse() *Program {
 }
 
 func (p *Parser) parseStatement() Node {
-	fmt.Printf("Parsing statement, token saat ini: %s (%s)\n", p.cur.Type, p.cur.Value)
+	//fmt.Printf("Parsing statement, token saat ini: %s (%s)\n", p.cur.Type, p.cur.Value)
 	switch p.cur.Type {
 	case IF:
 		return p.parseIf()

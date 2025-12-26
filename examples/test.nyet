@@ -40,3 +40,12 @@ echo "Total harga setelah pajak: " + $total;
 $result = json_encode($user);
 echo $result;
 echo json_decode($result);
+$user = ["nama" => "Budi", "skor" => 100];
+// Simpan map/array sebagai string JSON
+set_data("profil_1", json_encode($user)); 
+
+// Saat ambil, jangan lupa di-decode
+$dataString = get_data("profil_1");
+$profil = json_decode($dataString);
+
+echo $profil["nama"];

@@ -10,6 +10,28 @@ function hello() {
     return "<h1>Halo, " + $namaUser + "!</h1><p>Senang bertemu kamu di MonyetLang.</p>";
 }
 
+function simpanNama() {
+    $nama = $_POST["nama"];
+    set_data("user_terakhir", $nama);
+    return "Data nama disimpan!";
+}
+
+function ambilNama() {
+    $nama = get_data("user_terakhir");
+    return "User terakhir adalah: " + $nama;
+}
+
+function simpanInfo() {
+    $info = $_POST["info"];
+    set_data("info", $info);
+    return "Data info disimpan!";
+}
+
+function ambilInfo() {
+    $info = get_data("info");
+    return "data info : " + $info;
+}
+
 function handleUpdate() {
     // Mengambil dari JSON Body {"nama": "Monyet Baru"}
     $namaBaru = $_PATCH["nama"]; 
@@ -30,6 +52,18 @@ function router() {
     if ($PATH == "/") {
         // Panggil file HTML-mu di sini
         return render("index.html");
+    }
+    if ($PATH == "/save") {
+        return simpanNama();
+    }
+    if ($PATH == "/get-data") {
+        return ambilNama();
+    }
+    if ($PATH == "/save-info") {
+        return simpanInfo();
+    }
+    if ($PATH == "/get-info") {
+        return ambilInfo();
     }
     if ($PATH == "/update" && $METHOD == "PATCH") {
         return handleUpdate();

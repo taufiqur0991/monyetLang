@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,7 +18,7 @@ func main() {
 
 	env := monyet.NewEnv()
 	env.SetVar("__BASE_DIR__", baseDir)
-	fmt.Printf("DEBUG: Berhasil parse %d statement\n", len(prog.Statements))
-	fmt.Printf("Parsed statements: %d\n", len(prog.Statements))
+	// fmt.Printf("DEBUG: Berhasil parse %d statement\n", len(prog.Statements))
+	// fmt.Printf("Parsed statements: %d\n", len(prog.Statements))
 	monyet.Eval(prog, env)
 }

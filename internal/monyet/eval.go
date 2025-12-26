@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var storage = NewMonyetDB("monyet.db")
+
 func Eval(prog *Program, env *Env) {
 	for _, s := range prog.Statements {
 		evalNode(s, env)
@@ -117,6 +119,33 @@ func evalNode(n Node, env *Env) interface{} {
 		return nil
 
 	case Call:
+		if v.Name == "set_data" {
+			k := fmt.Sprintf("%v", evalNode(v.Args[0], env))
+			val := evalNode(v.Args[1], env)
+
+			// Jika yang dikirim adalah Map atau Array, otomatis JSON-kan
+			var finalVal interface{}
+			switch val.(type) {
+			case map[string]interface{}, []interface{}:
+				jsonBytes, _ := json.Marshal(val)
+				finalVal = string(jsonBytes)
+			default:
+				finalVal = val
+			}
+
+			storage.Set(k, finalVal)
+			return true
+		}
+
+		if v.Name == "get_data" {
+			kEval := evalNode(v.Args[0], env)
+			if kEval == nil {
+				return ""
+			}
+
+			kStr := fmt.Sprintf("%v", kEval)
+			return storage.Get(kStr)
+		}
 		fn, ok := env.GetFunc(v.Name)
 		if !ok {
 			panic("undefined function: " + v.Name)

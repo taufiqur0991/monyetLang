@@ -57,6 +57,10 @@ func (l *Lexer) NextToken() Token {
 		}
 		return Token{Type: SLASH, Value: "/"}
 	case '=':
+		if l.peek() == '>' {
+			l.next()
+			return Token{Type: ARROW, Value: "=>"}
+		}
 		if l.peek() == '=' {
 			l.next() // makan = kedua
 			return Token{Type: EQ, Value: "=="}
@@ -126,6 +130,12 @@ func (l *Lexer) NextToken() Token {
 		}
 		if ident == "render" {
 			return Token{Type: RENDER, Value: ident}
+		}
+		if ident == "json_encode" {
+			return Token{Type: JSON_ENCODE, Value: ident}
+		}
+		if ident == "json_decode" {
+			return Token{Type: JSON_DECODE, Value: ident}
 		}
 
 		return Token{Type: IDENT, Value: ident}

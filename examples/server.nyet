@@ -10,16 +10,20 @@ function hello() {
     return "<h1>Halo, " + $namaUser + "!</h1><p>Senang bertemu kamu di MonyetLang.</p>";
 }
 
-function home(){
-    return "<h1>Homepage</h1>";
-}
-
 function router() {
 
 
     if ($PATH == "/") {
         // Panggil file HTML-mu di sini
         return render("index.html");
+    }
+    $user = [
+        "nama" => "Budi",
+        "umur" => 25,
+        "is_admin" => 1 == 1
+    ];
+    if ($PATH == "/api/test") {
+        return json_encode($user);
     }
     if ($PATH == "/halo") {
         if ($METHOD == "GET") {

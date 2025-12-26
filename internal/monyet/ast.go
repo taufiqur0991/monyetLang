@@ -71,3 +71,17 @@ type Include struct {
 type Render struct {
 	Path Node
 }
+
+type JsonEncode struct {
+	Data Node
+}
+
+type JsonDecode struct {
+	Value Node
+}
+
+type MapLiteral struct {
+	Pairs map[Node]Node
+}
+
+func (m MapLiteral) nodeSig() {}

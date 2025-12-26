@@ -1,6 +1,7 @@
 package monyet
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -44,28 +45,34 @@ func evalNode(n Node, env *Env) interface{} {
 		return val
 
 	case Binary:
+		// 1. Tangani Logika (AND / OR) terlebih dahulu
+		// Karena ini butuh return bool, kita evaluasi langsung
+		if v.Op == AND || v.Op == OR {
+			lVal, okL := evalNode(v.Left, env).(bool)
+			rVal, okR := evalNode(v.Right, env).(bool)
+			if !okL || !okR {
+				panic("Operasi logika && atau || membutuhkan tipe boolean")
+			}
+			if v.Op == AND {
+				return lVal && rVal
+			}
+			return lVal || rVal
+		}
+
+		// 2. Evaluasi Nilai Kiri dan Kanan untuk operasi lainnya
 		left := evalNode(v.Left, env)
 		right := evalNode(v.Right, env)
 
-		// 1. Operasi Perbandingan (Bisa String atau Int)
+		// 3. Operasi Perbandingan EQ & Penggabungan String (PLUS)
 		switch v.Op {
-		case AND:
-			left := evalNode(v.Left, env).(bool)
-			right := evalNode(v.Right, env).(bool)
-			return left && right
-		case OR:
-			left := evalNode(v.Left, env).(bool)
-			right := evalNode(v.Right, env).(bool)
-			return left || right
 		case EQ:
 			sLeft, okL := left.(string)
 			sRight, okR := right.(string)
-
 			if okL && okR {
-				// Bersihkan spasi/newline di kedua sisi
 				return strings.TrimSpace(sLeft) == strings.TrimSpace(sRight)
 			}
 			return left == right
+
 		case PLUS:
 			// Cek kalau salah satu string, lakukan Concat (PHP-style)
 			_, lok := left.(string)
@@ -75,11 +82,10 @@ func evalNode(n Node, env *Env) interface{} {
 			}
 		}
 
-		// 2. Operasi Matematika & Perbandingan Angka (Khusus Int)
+		// 4. Operasi Matematika & Perbandingan Angka (Khusus Int)
 		li, lok := left.(int)
 		ri, rok := right.(int)
 		if !lok || !rok {
-			// Biar tidak bingung, kasih info lebih detail di panic
 			panic(fmt.Sprintf("invalid operands for binary operation: %v (%T) and %v (%T)", left, left, right, right))
 		}
 
@@ -91,6 +97,9 @@ func evalNode(n Node, env *Env) interface{} {
 		case STAR:
 			return li * ri
 		case SLASH:
+			if ri == 0 {
+				panic("pembagian dengan nol")
+			}
 			return li / ri
 		case GT:
 			return li > ri
@@ -160,10 +169,17 @@ func evalNode(n Node, env *Env) interface{} {
 		left := evalNode(v.Left, env)
 		index := evalNode(v.Index, env)
 
-		// Cek apakah left adalah sebuah Map (untuk $_GET)
 		if m, ok := left.(map[string]interface{}); ok {
 			idxStr := fmt.Sprintf("%v", index)
 			return m[idxStr]
+		}
+		// TAMBAHKAN INI: Support untuk Array/Slice
+		if s, ok := left.([]interface{}); ok {
+			if idxInt, ok := index.(int); ok {
+				if idxInt >= 0 && idxInt < len(s) {
+					return s[idxInt]
+				}
+			}
 		}
 		return nil
 	case Serve:
@@ -171,27 +187,28 @@ func evalNode(n Node, env *Env) interface{} {
 		handlerName := v.Handler
 		addr := fmt.Sprintf("0.0.0.0:%v", portVal)
 
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Gunakan server mux lokal agar tidak bentrok jika serve dipanggil ulang
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			fn, ok := env.GetFunc(handlerName)
 			if !ok {
+				http.Error(w, fmt.Sprintf("Handler %s tidak ditemukan", handlerName), 404)
 				return
-			}
-			monyetGet := make(map[string]interface{})
-			for key, values := range r.URL.Query() {
-				monyetGet[key] = values[0]
 			}
 
 			local := NewChildEnv(env)
+
+			// Setup variabel superglobal
+			monyetGet := make(map[string]interface{})
+			for key, values := range r.URL.Query() {
+				monyetGet[key] = values[0]
+				local.SetVar("GET_"+strings.ToUpper(key), values[0])
+			}
 			local.SetVar("_GET", monyetGet)
 			local.SetVar("PATH", r.URL.Path)
 			local.SetVar("METHOD", r.Method)
 
-			// Memasukkan semua query params secara otomatis
-			for key, values := range r.URL.Query() {
-				local.SetVar("GET_"+strings.ToUpper(key), values[0])
-			}
-
-			var result interface{}
+			var result interface{} = "" // Default kosong agar tidak <nil>
 			for _, stmt := range fn.Body {
 				val := evalNode(stmt, local)
 				if rv, ok := val.(returnValue); ok {
@@ -199,9 +216,20 @@ func evalNode(n Node, env *Env) interface{} {
 					break
 				}
 			}
-			fmt.Fprintf(w, "%v", result)
+
+			// --- HANDLING OUTPUT & HEADER ---
+			resStr := fmt.Sprintf("%v", result)
+
+			// Deteksi JSON secara otomatis
+			if len(resStr) > 0 && (resStr[0] == '{' || resStr[0] == '[') {
+				w.Header().Set("Content-Type", "application/json")
+			} else {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			}
+
+			fmt.Fprint(w, resStr)
 		})
-		err := http.ListenAndServe(addr, nil)
+		err := http.ListenAndServe(addr, mux)
 		if err != nil {
 			fmt.Printf("Web Server Gagal: %v\n", err) // Tambahkan log ini
 		}
@@ -218,10 +246,6 @@ func evalNode(n Node, env *Env) interface{} {
 		if err != nil {
 			panic(fmt.Sprintf("Gagal include: %s", targetPath))
 		}
-
-		// PENTING: Jika file yang di-include berada di subfolder,
-		// kita harus update __BASE_DIR__ untuk file tersebut agar include di dalamnya juga jalan.
-		// Tapi untuk tahap awal, ini sudah cukup.
 
 		l := NewLexer(string(content))
 		p := NewParser(l)
@@ -245,6 +269,39 @@ func evalNode(n Node, env *Env) interface{} {
 			return fmt.Sprintf("Render Error: File %s tidak ditemukan", targetPath)
 		}
 		return string(content)
+	case JsonEncode:
+		dataVal := evalNode(v.Data, env)
+		jsonBytes, err := json.Marshal(dataVal)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "%v"}`, err)
+		}
+		return string(jsonBytes)
+
+	case JsonDecode:
+		strVal := evalNode(v.Value, env)
+		str, ok := strVal.(string)
+		if !ok {
+			panic("json_decode membutuhkan input string")
+		}
+
+		var result interface{}
+		err := json.Unmarshal([]byte(str), &result)
+		if err != nil {
+			return nil
+		}
+		return result
+	case MapLiteral:
+		res := make(map[string]interface{})
+		for k, v := range v.Pairs {
+			// Evaluasi key dan value menjadi tipe data Go asli (string, int, dll)
+			keyEval := evalNode(k, env)
+			valEval := evalNode(v, env)
+
+			// Paksa key menjadi string agar aman untuk JSON
+			keyStr := fmt.Sprintf("%v", keyEval)
+			res[keyStr] = valEval
+		}
+		return res
 		//end of switch
 	}
 

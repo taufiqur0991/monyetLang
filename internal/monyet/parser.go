@@ -24,7 +24,6 @@ func (p *Parser) Parse() *Program {
 	prog := &Program{}
 
 	for p.cur.Type != EOF {
-		// fmt.Printf("TOKEN: %+v\n", p.cur)
 
 		stmt := p.parseStatement()
 		if stmt != nil {
@@ -68,7 +67,7 @@ func (p *Parser) parseStatement() Node {
 			p.next() // makan [
 			index := p.parseExpr()
 			if p.cur.Type != RBRACKET {
-				panic("Kurang ] di index access")
+				panic("Kurang ] ")
 			}
 			p.next() // makan ]
 			node = IndexAccess{Left: node, Index: index}
@@ -78,14 +77,6 @@ func (p *Parser) parseStatement() Node {
 		if p.cur.Type == ASSIGN {
 			p.next() // makan =
 			val := p.parseExpr()
-
-			// Jika node adalah Variable biasa
-			if v, ok := node.(Variable); ok {
-				return Assign{Name: v.Name, Value: val}
-			}
-
-			// Jika node adalah IndexAccess, kita butuh tipe AST baru (AssignIndex)
-			// Tapi untuk sementara, agar tidak error, kita return node biasa atau handle error
 			return Assign{Name: name, Value: val}
 		}
 
@@ -156,10 +147,9 @@ func (p *Parser) parseStatement() Node {
 		}
 		return Include{Path: path}
 	default:
-		// Jika parser bingung, dia akan lapor
-		if p.cur.Type != EOF && p.cur.Type != SEMICOLON && p.cur.Type != RBRACE {
-			fmt.Printf("DEBUG: Token = %s, Value = %s\n", p.cur.Type, p.cur.Value)
-		}
+		// Jika sampai sini, berarti ada token yang Parser tidak tahu cara handle-nya
+		fmt.Printf("WARNING: Parser tidak tahu cara menangani token %s\n", p.cur.Type)
+		p.next() // Lewati saja biar tidak loop selamanya
 	}
 
 	return nil
@@ -180,11 +170,10 @@ func (p *Parser) parseFactor() Node {
 	tok := p.cur
 	var node Node
 
-	// 1. Ambil Node Dasar
 	if tok.Type == DOLLAR {
-		p.next()
+		p.next() // makan $
 		name := p.cur.Value
-		p.next()
+		p.next() // makan nama
 		node = Variable{Name: name}
 	} else if tok.Type == NUMBER {
 		p.next()
@@ -193,6 +182,8 @@ func (p *Parser) parseFactor() Node {
 	} else if tok.Type == STRING {
 		p.next()
 		node = String{Value: tok.Value}
+	} else if tok.Type == LBRACKET {
+		node = p.parseMapLiteral()
 	} else if tok.Type == IDENT {
 		name := tok.Value
 		p.next()
@@ -210,24 +201,39 @@ func (p *Parser) parseFactor() Node {
 		} else {
 			node = Variable{Name: name}
 		}
-	} else if tok.Type == RENDER { // <--- PINDAHKAN KE SINI
-		p.next() // makan 'render'
-		if p.cur.Type != LPAREN {
-			panic("Expected ( after render")
+	} else if tok.Type == RENDER {
+		p.next() // render
+		p.next() // (
+		path := p.parseExpr()
+		p.next() // )
+		node = Render{Path: path}
+	} else if tok.Type == JSON_ENCODE {
+		p.next() // json_encode
+		if p.cur.Type == LPAREN {
+			p.next()
 		}
-		p.next()
-		pathExpr := p.parseExpr()
-		if p.cur.Type != RPAREN {
-			panic("Expected ) after path")
+		data := p.parseExpr()
+		if p.cur.Type == RPAREN {
+			p.next()
 		}
-		p.next()
-		node = Render{Path: pathExpr} // Simpan ke variable node
+		node = JsonEncode{Data: data}
+	} else if tok.Type == JSON_DECODE {
+		p.next() // json_decode
+		if p.cur.Type == LPAREN {
+			p.next()
+		}
+		val := p.parseExpr()
+		if p.cur.Type == RPAREN {
+			p.next()
+		}
+		node = JsonDecode{Value: val}
 	}
+
 	for p.cur.Type == LBRACKET {
 		p.next() // makan [
 		index := p.parseExpr()
 		if p.cur.Type != RBRACKET {
-			panic("Expected ]")
+			panic("Expected ] after index access")
 		}
 		p.next() // makan ]
 		node = IndexAccess{Left: node, Index: index}
@@ -410,4 +416,42 @@ func (p *Parser) parseLogical() Node {
 		left = Binary{Left: left, Op: op, Right: right}
 	}
 	return left
+}
+
+func (p *Parser) parseMapLiteral() Node {
+	p.next() // makan [
+	pairs := make(map[Node]Node)
+
+	// Jika langsung ], berarti array/map kosong
+	if p.cur.Type == RBRACKET {
+		p.next()
+		return MapLiteral{Pairs: pairs}
+	}
+
+	for {
+		key := p.parseExpr()
+
+		// Cek apakah ini Map (ada =>) atau Array biasa
+		if p.cur.Type == ARROW { // Pastikan kamu sudah buat token ARROW "=>"
+			p.next() // makan =>
+			value := p.parseExpr()
+			pairs[key] = value
+		} else {
+			// Jika tidak ada =>, gunakan index angka (seperti array)
+			pairs[Number{Value: len(pairs)}] = key
+		}
+
+		if p.cur.Type == COMMA {
+			p.next()
+		} else {
+			break
+		}
+	}
+
+	if p.cur.Type != RBRACKET {
+		panic("Expected ] at the end of map literal")
+	}
+	p.next() // makan ]
+
+	return MapLiteral{Pairs: pairs}
 }

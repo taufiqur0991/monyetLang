@@ -46,6 +46,11 @@ function handleUpdate() {
     ]);
 }
 
+function data_json(){
+    $dataString = get_data("profil_1");
+    return $dataString;
+}
+
 function router() {
 
 
@@ -64,6 +69,9 @@ function router() {
     }
     if ($PATH == "/get-info") {
         return ambilInfo();
+    }
+    if($PATH == "/data-json"){
+        return data_json();
     }
     if ($PATH == "/update" && $METHOD == "PATCH") {
         return handleUpdate();

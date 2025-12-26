@@ -1,0 +1,106 @@
+package monyet
+
+import "unicode"
+
+type Lexer struct {
+	input []rune
+	pos   int
+}
+
+func NewLexer(src string) *Lexer {
+	return &Lexer{input: []rune(src)}
+}
+
+func (l *Lexer) next() rune {
+	if l.pos >= len(l.input) {
+		return 0
+	}
+	ch := l.input[l.pos]
+	l.pos++
+	return ch
+}
+
+func (l *Lexer) peek() rune {
+	if l.pos >= len(l.input) {
+		return 0
+	}
+	return l.input[l.pos]
+}
+
+func (l *Lexer) NextToken() Token {
+	ch := l.next()
+
+	for unicode.IsSpace(ch) {
+		ch = l.next()
+	}
+
+	switch ch {
+	case 0:
+		return Token{Type: EOF}
+	case '+':
+		return Token{Type: PLUS, Value: "+"}
+	case '-':
+		return Token{Type: MINUS, Value: "-"}
+	case '*':
+		return Token{Type: STAR, Value: "*"}
+	case '/':
+		return Token{Type: SLASH, Value: "/"}
+	case '=':
+		return Token{Type: ASSIGN, Value: "="}
+	case ';':
+		return Token{Type: SEMICOLON, Value: ";"}
+	case '(':
+		return Token{Type: LPAREN, Value: "("}
+	case ')':
+		return Token{Type: RPAREN, Value: ")"}
+	case '$':
+		return Token{Type: DOLLAR, Value: "$"}
+	case '"':
+		return Token{Type: STRING, Value: l.readString()}
+	case '>':
+		return Token{Type: GT, Value: ">"}
+
+	}
+
+	if unicode.IsDigit(ch) {
+		return Token{Type: NUMBER, Value: l.readNumber(ch)}
+	}
+
+	if unicode.IsLetter(ch) {
+		ident := l.readIdent(ch)
+		if ident == "echo" {
+			return Token{Type: ECHO, Value: ident}
+		}
+		return Token{Type: IDENT, Value: ident}
+	}
+
+	return Token{Type: ILLEGAL}
+}
+
+func (l *Lexer) readNumber(start rune) string {
+	out := []rune{start}
+	for unicode.IsDigit(l.peek()) {
+		out = append(out, l.next())
+	}
+	return string(out)
+}
+
+func (l *Lexer) readIdent(start rune) string {
+	out := []rune{start}
+	for unicode.IsLetter(l.peek()) {
+		out = append(out, l.next())
+	}
+	return string(out)
+}
+
+func (l *Lexer) readString() string {
+	out := []rune{}
+	for {
+		ch := l.next()
+		if ch == '"' || ch == 0 {
+			break
+		}
+		out = append(out, ch)
+	}
+	return string(out)
+}

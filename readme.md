@@ -69,3 +69,6 @@ serve(8080, router);
 - `/cmd/monyet`: Entry point aplikasi.
 - `/internal/monyet`: Core engine (Lexer, Parser, Interpreter, DB).
 - `examples/`: Koleksi script contoh penggunaan.
+
+### 📷 Screenshoot
+![Screenshoot][screenshoot.png]

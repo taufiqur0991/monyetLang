@@ -10,12 +10,29 @@ function hello() {
     return "<h1>Halo, " + $namaUser + "!</h1><p>Senang bertemu kamu di MonyetLang.</p>";
 }
 
+function handleUpdate() {
+    // Mengambil dari JSON Body {"nama": "Monyet Baru"}
+    $namaBaru = $_PATCH["nama"]; 
+    
+    if ($namaBaru == "") {
+        return "Nama tidak boleh kosong";
+    }
+
+    return json_encode([
+        "status" => "updated",
+        "new_name" => $namaBaru
+    ]);
+}
+
 function router() {
 
 
     if ($PATH == "/") {
         // Panggil file HTML-mu di sini
         return render("index.html");
+    }
+    if ($PATH == "/update" && $METHOD == "PATCH") {
+        return handleUpdate();
     }
     $user = [
         "nama" => "Budi",

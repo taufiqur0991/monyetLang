@@ -31,9 +31,11 @@ func evalNode(n Node, env *Env) interface{} {
 	case Variable:
 		val, ok := env.GetVar(v.Name)
 		if !ok {
-			// Jika variabel diawali GET_, jangan panic, kembalikan string kosong
-			if strings.HasPrefix(v.Name, "GET_") {
-				return ""
+			prefixes := []string{"GET_", "POST_", "PATCH_", "DELETE_"}
+			for _, p := range prefixes {
+				if strings.HasPrefix(v.Name, p) {
+					return ""
+				}
 			}
 			panic("undefined variable: $" + v.Name)
 		}
@@ -205,6 +207,22 @@ func evalNode(n Node, env *Env) interface{} {
 				local.SetVar("GET_"+strings.ToUpper(key), values[0])
 			}
 			local.SetVar("_GET", monyetGet)
+			// --- 2. HANDLE REQUEST BODY (_POST, _PATCH, _DELETE) ---
+			// Kita asumsikan body yang dikirim adalah JSON
+			bodyData := make(map[string]interface{})
+			if r.Body != nil {
+				decoder := json.NewDecoder(r.Body)
+				// Kita tidak panic kalau decode gagal (misal body kosong)
+				_ = decoder.Decode(&bodyData)
+			}
+			local.SetVar("_POST", bodyData)
+			local.SetVar("_PATCH", bodyData)
+			local.SetVar("_DELETE", bodyData)
+			// Opsional: shortcut seperti POST_NAMA
+			for k, v := range bodyData {
+				prefix := r.Method + "_" // Akan jadi POST_, PATCH_, atau DELETE_
+				local.SetVar(prefix+strings.ToUpper(k), v)
+			}
 			local.SetVar("PATH", r.URL.Path)
 			local.SetVar("METHOD", r.Method)
 

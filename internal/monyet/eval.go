@@ -1,6 +1,9 @@
 package monyet
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
 func Eval(prog *Program, env *Env) {
 	for _, s := range prog.Statements {
@@ -120,6 +123,51 @@ func evalNode(n Node, env *Env) interface{} {
 			}
 		}
 		return nil
+	case Serve:
+		portVal := evalNode(v.Port, env)
+		handlerName := v.Handler
+
+		var addr string
+		// Cek apakah inputnya string (seperti "0.0.0.0:80") atau int (seperti 8080)
+		switch p := portVal.(type) {
+		case string:
+			addr = p
+		case int:
+			addr = fmt.Sprintf("0.0.0.0:%d", p)
+		default:
+			panic("serve() expects port to be an integer or a string like '0.0.0.0:8080'")
+		}
+
+		fmt.Println("Monyet server aktif di " + addr)
+
+		// Handler tetap sama
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fn, ok := env.GetFunc(handlerName)
+			if !ok {
+				fmt.Fprintf(w, "Error: Function %s not found", handlerName)
+				return
+			}
+
+			local := NewChildEnv(env)
+			// Kita bisa tambahkan info request ke env local agar bisa diakses di dalam script
+			local.SetVar("METHOD", r.Method)
+			local.SetVar("PATH", r.URL.Path)
+
+			var result interface{}
+			for _, stmt := range fn.Body {
+				val := evalNode(stmt, local)
+				if rv, ok := val.(returnValue); ok {
+					result = rv.value
+					break
+				}
+			}
+
+			if result != nil {
+				fmt.Fprintf(w, "%v", result)
+			}
+		})
+
+		return http.ListenAndServe(addr, nil)
 	}
 
 	return nil

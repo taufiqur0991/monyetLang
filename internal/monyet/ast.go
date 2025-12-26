@@ -53,3 +53,8 @@ type If struct {
 	Then      []Node
 	Else      []Node // Bisa nil kalau tidak ada else
 }
+
+type Serve struct {
+	Port    Node
+	Handler string
+}

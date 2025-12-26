@@ -89,6 +89,9 @@ func (l *Lexer) NextToken() Token {
 		if ident == "else" {
 			return Token{Type: ELSE, Value: ident}
 		}
+		if ident == "serve" {
+			return Token{Type: SERVE, Value: ident}
+		}
 
 		return Token{Type: IDENT, Value: ident}
 	}

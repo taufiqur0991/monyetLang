@@ -79,7 +79,17 @@ func (p *Parser) parseStatement() Node {
 			return Call{Name: name, Args: args}
 		}
 		return Variable{Name: name}
+	case SERVE:
+		p.next() // makan 'serve'
+		p.next() // makan '('
+		port := p.parseExpr()
+		p.next() // makan ','
+		handlerName := p.cur.Value
+		p.next()
+		p.next() // makan ')'
+		return Serve{Port: port, Handler: handlerName}
 	}
+
 	return nil
 }
 

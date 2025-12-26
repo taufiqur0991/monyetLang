@@ -31,3 +31,12 @@ cekAngka(8);
 include "include.nyet";
 $total = hitungPajak(10000);
 echo "Total harga setelah pajak: " + $total;
+
+    $user = [
+        "nama" => "Budi",
+        "umur" => 25,
+        "is_admin" => 1 == 1
+    ];
+$result = json_encode($user);
+echo $result;
+echo json_decode($result);

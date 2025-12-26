@@ -47,8 +47,13 @@ function handleUpdate() {
 }
 
 function data_json(){
-    $dataString = get_data("profil_1");
+    $dataString = get_data("profil_data_json");
     return $dataString;
+}
+function save_data_json(){
+    $user = ["nama" => "Budi", "skor" => 100];
+    set_data("profil_data_json", json_encode($user)); 
+    return json_encode(["status" => "saved", "data" => $user]);
 }
 
 function router() {
@@ -71,7 +76,13 @@ function router() {
         return ambilInfo();
     }
     if($PATH == "/data-json"){
-        return data_json();
+        if ($METHOD == "GET") {
+            return data_json();
+        }
+        if ($METHOD == "POST") {
+            return save_data_json();
+        }
+        
     }
     if ($PATH == "/update" && $METHOD == "PATCH") {
         return handleUpdate();

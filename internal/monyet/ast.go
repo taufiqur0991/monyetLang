@@ -90,6 +90,11 @@ type ForeachStatement struct {
 	Body     []Node
 }
 
+type IndexAssign struct {
+	Left  Node
+	Value Node
+}
+
 //func (f ForeachStatement) nodeSigil() {}
 
 // func (m MapLiteral) nodeSig() {}

@@ -250,6 +250,30 @@ func evalNode(n Node, env *Env) interface{} {
 			}
 		}
 		return nil
+	case IndexAssign:
+		idxAccess := v.Left.(IndexAccess)
+		leftVal := evalNode(idxAccess.Left, env)
+		index := evalNode(idxAccess.Index, env)
+		newVal := evalNode(v.Value, env)
+
+		// Jika target adalah MAP
+		if m, ok := leftVal.(map[string]interface{}); ok {
+			keyStr := fmt.Sprintf("%v", index)
+			m[keyStr] = newVal
+			return newVal
+		}
+
+		// Jika target adalah SLICE/ARRAY
+		if s, ok := leftVal.([]interface{}); ok {
+			if idxInt, ok := index.(float64); ok { // Monyet pakai float64 untuk angka
+				i := int(idxInt)
+				if i >= 0 && i < len(s) {
+					s[i] = newVal
+					return newVal
+				}
+			}
+		}
+		panic("Gagal melakukan update: target bukan map atau array")
 	case Serve:
 		portVal := evalNode(v.Port, env)
 		handlerName := v.Handler

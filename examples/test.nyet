@@ -72,13 +72,48 @@ echo "Data dari DB - Skor: " + $profil_db["skor"];
 // delete_data("user_01");
 // drop_db(); // Hapus file project_test.db secara fisik
 
-$data = ["apel", "pisang", "jeruk"];
+// 1. Persiapan Data (Map/Object)
+$order = [
+    "id" => "TRX-001",
+    "pembeli" => "Budi Monyet",
+    "item" => "Pisang Goreng",
+    "total" => 15000,
+    "status" => "Lunas"
+];
 
-foreach ($data as $k => $v) {
-    echo "Index: " + $k + " Buah: " + $v;
+// 2. Simpan ke Database
+// Di eval.go kamu, set_data otomatis melakukan json.Marshal jika inputnya map
+set_data("order_terakhir", $order);
+
+echo "--- Data berhasil disimpan ---";
+
+// 3. Ambil kembali dari Database
+$raw = get_data("order_terakhir");
+echo "Data mentah dari DB: " + $raw;
+
+// 4. Decode kembali menjadi Object agar bisa di-loop
+$order_obj = json_decode($raw);
+
+echo "--- Memulai Iterasi Detail Pesanan ---";
+
+// 5. Loop menggunakan foreach yang tadi kita buat
+foreach ($order_obj as $key => $value) {
+    echo "Properti: " + $key + " | Nilai: " + $value;
 }
 
-// Atau tanpa key
-foreach ($data as $buah) {
-    echo "Makan " + $buah;
+echo "--- Selesai ---";
+echo "--- EDIT save database ---";
+$data = json_decode(get_data("order_terakhir"));
+$data["total"] = 17000;
+$data["item"] = "Pisang Goreng Kremes";
+set_data("order_terakhir", $data);
+echo "--- Data berhasil diperbarui! ---";
+$raw = get_data("order_terakhir");
+$order_obj = json_decode($raw);
+
+echo "--- Memulai Iterasi Detail Pesanan ---";
+
+// 5. Loop menggunakan foreach yang tadi kita buat
+foreach ($order_obj as $key => $value) {
+    echo "Properti: " + $key + " | Nilai: " + $value;
 }

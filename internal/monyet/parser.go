@@ -77,6 +77,10 @@ func (p *Parser) parseStatement() Node {
 		if p.cur.Type == ASSIGN {
 			p.next() // makan =
 			val := p.parseExpr()
+			// Jika node sebelumnya adalah IndexAccess, gunakan IndexAssign
+			if _, ok := node.(IndexAccess); ok {
+				return IndexAssign{Left: node, Value: val}
+			}
 			return Assign{Name: name, Value: val}
 		}
 
